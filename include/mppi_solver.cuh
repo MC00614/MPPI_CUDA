@@ -9,9 +9,9 @@
 
 #include <vector>
 
-#define BLOCK_SIZE 256
-#define CHUNK 4096          // #samples processed per batch
-#define SEED 1234          // RNG seed
+#define BLOCK_SIZE 256  // threads per block
+#define CHUNK 34816      // samples processed per batch
+#define SEED 1234       // RNG seed
 
 #define DIM_X 15
 #define DIM_U 6
@@ -37,6 +37,8 @@ private:
     double* d_anchor_{nullptr};
     double* d_gravity_{nullptr};
 
+    cudaStream_t h2dS_{nullptr};
+    cudaStream_t d2hS_{nullptr};
     cudaStream_t rngS_{nullptr};
     cudaStream_t rollS_{nullptr};
     cudaEvent_t  rngDone_{nullptr};
@@ -47,7 +49,21 @@ private:
 
     curandStatePhilox4_32_10_t* d_states;
 
+    int len_U0;
+    int len_ranges;
+    int len_accgyr;
+
+    double* d_x0;
+    double* d_U0;
+    double* d_ranges;
+    double* d_accgyr;
+
     double* d_noise;
     double* d_Ui;
     double* d_cost;
+    double* d_wi;
+
+    double* d_Uopt;
+    
+    double* d_xn;
 };

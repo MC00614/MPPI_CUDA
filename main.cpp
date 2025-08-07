@@ -1,9 +1,9 @@
 // @file main.cpp
 // @brief Main program for the MPPI solver with IMU and UWB data processing.
 // @author MC00614
-// @cite KYH7238, mppi_estimation
 
 #include "helper.h"
+
 #include "mppi_solver.cuh"
 
 #include <iostream>
@@ -11,88 +11,8 @@
 #include <chrono>
 
 #include <iostream>
-#include <fstream>
-#include <sstream>
+
 #include <algorithm>
-#include <cstdlib>
-
-bool loadImu(const std::string& path, std::vector<ImuData>& imuAll) {
-    std::ifstream ifs(path);
-    if(!ifs) { std::cerr << "Cannot open " << path << std::endl; return false; }
-    std::string line;
-    while(std::getline(ifs, line)) {
-        if(line.empty()) continue;
-        std::istringstream iss(line);
-        ImuData d;
-        iss >> d.timeStamp
-            >> d.acc.x() >> d.acc.y() >> d.acc.z()
-            >> d.gyr.x() >> d.gyr.y() >> d.gyr.z();
-        imuAll.push_back(d);
-    }
-    return true;
-}
-
-bool loadUwb(const std::string& path,
-             std::vector<UwbData>& uwbLeft,
-             std::vector<UwbData>& uwbRight)
-{
-    std::ifstream ifs(path);
-    if(!ifs) { std::cerr << "Cannot open " << path << std::endl; return false; }
-    std::string line;
-    while(std::getline(ifs, line)) {
-        if(line.empty()) continue;
-        std::istringstream iss(line);
-        UwbData d;
-        iss >> d.id >> d.timeStamp;
-        d.ranges.resize(8);
-        for(int i = 0; i < 8; ++i) iss >> d.ranges(i);
-        if(d.id == 0) uwbLeft.push_back(d);
-        else          uwbRight.push_back(d);
-    }
-    return true;
-}
-
-bool getNextBatch(int T,
-    const std::vector<ImuData>& imuAll, size_t& imuIdx,
-    const std::vector<UwbData>& uwbLeft, size_t& ulIdx,
-    const std::vector<UwbData>& uwbRight, size_t& urIdx,
-    std::vector<ImuData>& imuBatch,
-    std::vector<UwbData>& uwbBatch)
-{
-    imuBatch.clear();
-    uwbBatch.clear();
-    while((int)uwbBatch.size() < T) {
-        if(ulIdx >= uwbLeft.size() || urIdx >= uwbRight.size()) return false;
-        double tsL = uwbLeft[ulIdx].timeStamp;
-        double tsR = uwbRight[urIdx].timeStamp;
-        if(std::abs(tsL - tsR) > 1e-6) {
-            if(tsL < tsR) ++ulIdx;
-            else           ++urIdx;
-            continue;
-        }
-        double ts = tsL;
-        while(imuIdx + 1 < imuAll.size() && imuAll[imuIdx+1].timeStamp < ts) ++imuIdx;
-        if(imuIdx + 1 >= imuAll.size()) return false;
-        const ImuData &a = imuAll[imuIdx];
-        const ImuData &b = imuAll[imuIdx+1];
-        double w = (ts - a.timeStamp) / (b.timeStamp - a.timeStamp);
-        ImuData di;
-        di.timeStamp = ts;
-        di.acc = a.acc * (1-w) + b.acc * w;
-        di.gyr = a.gyr * (1-w) + b.gyr * w;
-        imuBatch.push_back(di);
-        UwbData du;
-        du.timeStamp = ts;
-        du.id = 0;
-        du.ranges.resize(16);
-        du.ranges.head(8) = uwbLeft[ulIdx].ranges;
-        du.ranges.tail(8) = uwbRight[urIdx].ranges;
-        uwbBatch.push_back(du);
-        ++ulIdx;
-        ++urIdx;
-    }
-    return true;
-}
 
 int main() {
     const std::string imuPath     = "../data/imu_test2.txt";
@@ -110,28 +30,17 @@ int main() {
     for(auto &d : uwbLeft)  d.timeStamp -= uwbOffset;
     for(auto &d : uwbRight) d.timeStamp -= uwbOffset;
 
-    Eigen::Matrix<double,3,8> anchors;
-    std::ifstream ifs(anchorsPath);
-    for(int i = 0; i < 8; ++i)
-        ifs >> anchors(0,i) >> anchors(1,i) >> anchors(2,i);
-
-    // mppiEstimation mppi;
-    // mppi.setAnchorPositions(anchors);
-
     // ========== MPPI Solver ==========
     // Problem parameters
-    const int N = 8000;
-    const int T = 3;
+    const int N = 2000;
+    const int T = 5;
     const double dt = 0.02;
-    const double gamma = 10.0;
+    const double gamma = 5.0;
 
     // Problem specific parameters
     double anchor[24];
-    for (int i = 0; i < 8; ++i) {
-        anchor[i * 3 + 0] = anchors(0, i);
-        anchor[i * 3 + 1] = anchors(1, i);
-        anchor[i * 3 + 2] = anchors(2, i);
-    }
+    std::ifstream ifs(anchorsPath);
+    for (int i = 0; i < 24; ++i) ifs >> anchor[i];
     double gravity[3] = {0, 0, -9.81};
     double sigma[6] = {15.0, 15.0, 15.0, 5.0, 5.0, 5.0};
     MPPISolver solver(N, T, dt, gamma, anchor, gravity, sigma);
@@ -155,9 +64,11 @@ int main() {
     // Storage for optimized control inputs
     double Uopt[6 * T] = {0.0};
 
-    auto start = std::chrono::high_resolution_clock::now();
+    auto total_start = std::chrono::high_resolution_clock::now();
 
-    while(true) {
+    int iter = 0;
+    double solve_duration = 0.0;
+    while (true) {
         std::vector<ImuData> imuBatch;
         std::vector<UwbData> uwbBatch;
         if(!getNextBatch(T, imuAll, imuIdx,
@@ -183,9 +94,21 @@ int main() {
             accgyr[t * 6 + 5] = imuBatch[t].gyr.z();
         }
 
+        auto solve_start = std::chrono::high_resolution_clock::now();
+
         solver.solve(Uopt, xn, x0, U0, ranges, accgyr);
         cudaDeviceSynchronize();
 
+        auto solve_end = std::chrono::high_resolution_clock::now();
+        solve_duration += std::chrono::duration<double, std::milli>(solve_end - solve_start).count();
+
+        // Update initial state for next iteration
+        std::copy(xn, xn + 15, x0);
+
+        // Iteration count
+        iter++;
+
+        // Log current state
         STATE st(xn);
         poseFile << ts << " "
              << st.p.x() << " "
@@ -197,17 +120,19 @@ int main() {
                  << q.z() << " "
                  << q.w() << "\n";
                  std::cout<< ts <<" pos=["<< st.p.transpose() <<"]\n";
-        // Update initial state for next iteration
-        std::copy(xn, xn + 15, x0);
+
     }
-    auto end = std::chrono::high_resolution_clock::now();
-    std::cout << "solve() time: "
-                << std::chrono::duration<double, std::milli>(end - start).count()
-                << " ms\n";
-                
+    auto total_end = std::chrono::high_resolution_clock::now();
+    double totalTime = std::chrono::duration<double, std::milli>(total_end - total_start).count();
+    std::cout << "\nTotal time: " << totalTime << " ms" << std::endl;
+    std::cout << "Average time per iteration: " << totalTime / iter << " ms" << std::endl;
+    std::cout << "\nTotal solve time: " << solve_duration << " ms" << std::endl;
+    std::cout << "Average solve time per iteration: " << solve_duration / iter << " ms" << std::endl;
+    std::cout << "" << std::endl;
+
     poseFile.close();
 
-    // int ret = std::system("python3 ../scripts/plot.py"); (void)ret;
+    int ret = std::system("python3 ../scripts/plot.py"); (void)ret;
 
 
     return 0;
