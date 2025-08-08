@@ -104,7 +104,9 @@ int main() {
 
         // Update initial state for next iteration
         std::copy(xn, xn + 15, x0);
-        std::copy(Uopt, Uopt + 6 * T, U0);
+        // Warm start control inputs
+        std::copy(Uopt + 6, Uopt + 6 * T, U0);
+        std::copy(Uopt + 6 * (T - 1), Uopt + 6 * T, U0 + 6 * (T - 1));
 
         // Iteration count
         iter++;
