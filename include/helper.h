@@ -22,7 +22,9 @@ public:
     STATE(const double* x) {
         p = Eigen::Vector3d(x[0], x[1], x[2]);
         v = Eigen::Vector3d(x[3], x[4], x[5]);
-        R = Eigen::Map<const Eigen::Matrix3d>(x + 6);
+        R << x[6],  x[7],  x[8],
+            x[9],  x[10], x[11],
+            x[12], x[13], x[14];
     }
 };
 
