@@ -110,7 +110,7 @@ __device__ double uwb_step_cost(const double* pos,
 
     double s = 0.0;
     #pragma unroll
-    for (int j = 0; j < 8; ++j) {
+    for (int j = 0; j < 16; ++j) {
         double diff = Hx[j] - ranges[j];
         s += diff * diff;
     }

@@ -78,10 +78,10 @@ int main() {
         if(prevTs > 0) solver.setDt(ts - prevTs);
         prevTs = ts;
 
-        double ranges[8 * T];
+        double ranges[16 * T];
         for (int t = 0; t < T; ++t) {
-            for (int i = 0; i < 8; ++i) {
-                ranges[t * 8 + i] = uwbBatch[t].ranges(i);
+            for (int i = 0; i < 16; ++i) {
+                ranges[t * 16 + i] = uwbBatch[t].ranges(i);
             }
         }
         double accgyr[6 * T];

@@ -73,7 +73,7 @@ __global__ void rollout_kernel(int N, int T, double dt, const double* g,
         double x_next[DIM_X];
         step_dynamics(x, ui, dt, g, x_next);
         // UWB cost
-        c += 5.0 * uwb_step_cost(x_next, anchor, &ranges[t * 8]);
+        c += 5.0 * uwb_step_cost(x_next, anchor, &ranges[t * 16]);
         // IMU ACC cost
         c += 1e-3 * imu_accgyr_step_cost(ui, &accgyr[t * 6]);
         // IMU GYR cost
@@ -123,7 +123,7 @@ MPPISolver::MPPISolver(int N, int T, double dt, double gamma, const double *h_an
 
     // Allocate device memory
     len_U0 = T_ * DIM_U;
-    len_ranges = T_ * 8;
+    len_ranges = T_ * 16;
     len_accgyr = T_ * 6;
     cudaMalloc(&d_x0, DIM_X * sizeof(double));
     cudaMalloc(&d_U0, len_U0 * sizeof(double));
