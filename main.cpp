@@ -104,6 +104,7 @@ int main() {
 
         // Update initial state for next iteration
         std::copy(xn, xn + 15, x0);
+        std::copy(Uopt, Uopt + 6 * T, U0);
 
         // Iteration count
         iter++;
