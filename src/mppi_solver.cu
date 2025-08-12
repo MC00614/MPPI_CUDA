@@ -73,7 +73,7 @@ __global__ void rollout_kernel(int N, int T, double dt, const double* g,
         double x_next[DIM_X];
         step_dynamics(x, ui, dt, g, x_next);
         // UWB cost
-        c += 1.0 * uwb_step_cost(x_next, anchor, &ranges[t * 16]);
+        c += 0.5 * uwb_step_cost(x_next, anchor, &ranges[t * 16]);
         // IMU ACC cost
         c += 1e-3 * imu_accgyr_step_cost(ui, &accgyr[t * 6]);
         // IMU GYR cost
@@ -182,7 +182,7 @@ void MPPISolver::solve(double *h_Uopt, double *h_xn, const double *h_x0, const d
         int batch_samples = batch * T_ * DIM_U; // Total number of input sample elements
 
         // Get noise
-        noise_kernel<<<(batch_samples + BLOCK_SIZE - 1) / BLOCK_SIZE, BLOCK_SIZE, 0, rngS_>>>(d_states, d_noise + batch_start, batch, T_);
+        noise_kernel<<<(batch_samples + BLOCK_SIZE - 1) / BLOCK_SIZE, BLOCK_SIZE, 0, rngS_>>>(d_states, d_noise + batch_start * T_ * DIM_U, batch, T_);
         cudaEventRecord(rngDone_, rngS_);
 
         // Wait for RNG to finish and then launch rollout
@@ -192,7 +192,7 @@ void MPPISolver::solve(double *h_Uopt, double *h_xn, const double *h_x0, const d
         rollout_kernel<<<(batch + BLOCK_SIZE - 1) / BLOCK_SIZE, BLOCK_SIZE, 0, rollS_>>>(
             batch, T_, dt_, d_gravity_,
             d_anchor_, d_ranges, d_accgyr,
-            d_U0, d_noise, d_x0, gamma_,
+            d_U0, d_noise + batch_start * T_ * DIM_U, d_x0, gamma_,
             d_Ui + batch_start * T_ * DIM_U, d_cost + batch_start);
 
         batch_start += batch;
