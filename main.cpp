@@ -42,7 +42,7 @@ int main() {
     std::ifstream ifs(anchorsPath);
     for (int i = 0; i < 24; ++i) ifs >> anchor[i];
     double gravity[3] = {0, 0, -9.81};
-    double sigma[6] = {15.0, 15.0, 15.0, 5.0, 5.0, 5.0};
+    double sigma[6] = {10.0, 10.0, 10.0, 1.0, 1.0, 1.0};
     MPPISolver solver(N, T, dt, gamma, anchor, gravity, sigma);
     
     std::ofstream poseFile("../data/mppi_pose_2.txt");

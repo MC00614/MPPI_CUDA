@@ -70,15 +70,15 @@ __device__ void step_dynamics(const double* x,
     double omega[3] = {u[3] * dt, u[4] * dt, u[5] * dt};
     double exp[9];
     Exp_SO3(omega, exp);
-    x_next[6] = exp[0] * x[6] + exp[1] * x[7] + exp[2] * x[8];
-    x_next[7] = exp[3] * x[6] + exp[4] * x[7] + exp[5] * x[8];
-    x_next[8] = exp[6] * x[6] + exp[7] * x[7] + exp[8] * x[8];
-    x_next[9] = exp[0] * x[9] + exp[1] * x[10] + exp[2] * x[11];
-    x_next[10] = exp[3] * x[9] + exp[4] * x[10] + exp[5] * x[11];
-    x_next[11] = exp[6] * x[9] + exp[7] * x[10] + exp[8] * x[11];
-    x_next[12] = exp[0] * x[12] + exp[1] * x[13] + exp[2] * x[14];
-    x_next[13] = exp[3] * x[12] + exp[4] * x[13] + exp[5] * x[14];
-    x_next[14] = exp[6] * x[12] + exp[7] * x[13] + exp[8] * x[14];
+    x_next[6] = exp[0] * x[6] + exp[3] * x[7] + exp[6] * x[8];
+    x_next[7] = exp[1] * x[6] + exp[4] * x[7] + exp[7] * x[8];
+    x_next[8] = exp[2] * x[6] + exp[5] * x[7] + exp[8] * x[8];
+    x_next[9] = exp[0] * x[9] + exp[3] * x[10] + exp[6] * x[11];
+    x_next[10] = exp[1] * x[9] + exp[4] * x[10] + exp[7] * x[11];
+    x_next[11] = exp[2] * x[9] + exp[5] * x[10] + exp[8] * x[11];
+    x_next[12] = exp[0] * x[12] + exp[3] * x[13] + exp[6] * x[14];
+    x_next[13] = exp[1] * x[12] + exp[4] * x[13] + exp[7] * x[14];
+    x_next[14] = exp[2] * x[12] + exp[5] * x[13] + exp[8] * x[14];
 }
 
 __device__ double uwb_step_cost(const double* pos,

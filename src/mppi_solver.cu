@@ -73,7 +73,7 @@ __global__ void rollout_kernel(int N, int T, double dt, const double* g,
         double x_next[DIM_X];
         step_dynamics(x, ui, dt, g, x_next);
         // UWB cost
-        c += 5.0 * uwb_step_cost(x_next, anchor, &ranges[t * 16]);
+        c += 1.0 * uwb_step_cost(x_next, anchor, &ranges[t * 16]);
         // IMU ACC cost
         c += 1e-3 * imu_accgyr_step_cost(ui, &accgyr[t * 6]);
         // IMU GYR cost
